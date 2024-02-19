@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Collections;
+using System.Collections.Generic;
 using OpenAI;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 
 public class Whisper : MonoBehaviour
@@ -16,7 +17,7 @@ public class Whisper : MonoBehaviour
     private AudioClip clip;
     private bool isRecording;
     private float time;
-    private OpenAIApi openai = new OpenAIApi();
+    private OpenAIApi openai = new OpenAIApi("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","org-Xpw1zuIw1inG2e7vIB6ZKaEe");
 
     private List<ChatMessage> messages = new List<ChatMessage>();
 
@@ -32,71 +33,48 @@ public class Whisper : MonoBehaviour
         clip = Microphone.Start(null, false, duration, 44100);
     }
 
-    private void EndRecording()
+    private async void EndRecording()
     {
         message.text = "Transcripting...";
 
         Microphone.End(null);
 
         byte[] data = SaveWav.Save(fileName, clip);
-
-        Task.Run(async () =>
+        var req = new CreateAudioTranscriptionsRequest
         {
-            var req = new CreateAudioTranscriptionsRequest
-            {
-                FileData = new FileData() { Data = data, Name = "audio.wav" },
-                Model = "whisper-1",
-                Language = "en"
-            };
-            var res = await openai.CreateAudioTranscription(req);
+            FileData = new FileData() { Data = data, Name = "audio.wav" },
+            Model = "whisper-1",
+            Language = "en"
+        };
+        var res = await openai.CreateAudioTranscription(req);
 
-            UnityMainThreadDispatcher.Instance().Enqueue(() =>
-            {
-                progressBar.fillAmount = 0;
-                message.text = res.Text;
-                recordButton.enabled = true;
+        progressBar.fillAmount = 0;
+        message.text = res.Text;
+        recordButton.enabled = true;
 
-                var newMessage = new ChatMessage()
-                {
-                    Role = "user",
-                    Content = message.text
-                };
+        var newMessage = new ChatMessage()
+        {
+            Role = "user",
+            Content = message.text
+        };
 
-                messages.Add(newMessage);
+        messages.Add(newMessage);
 
-                Task.Run(async () =>
-                {
-                    var completionResponse = await openai.CreateChatCompletion(new CreateChatCompletionRequest()
-                    {
-                        Model = "gpt-3.5-turbo-0613",
-                        Messages = messages
-                    });
-
-                    if (completionResponse.Choices != null && completionResponse.Choices.Count > 0)
-                    {
-                        var message = completionResponse.Choices[0].Message;
-                        message.Content = message.Content.Trim();
-
-                        messages.Add(message);
-
-                        // Use Android's native TTS capabilities to speak the text.
-                        using (AndroidJavaObject tts =
-                               new AndroidJavaObject("android.speech.tts.TextToSpeech",
-                                   new AndroidJavaClass("com.unity3d.player.UnityPlayer").GetStatic<AndroidJavaObject>("currentActivity"), null))
-                        {
-                            if (tts != null)
-                            {
-                                tts.Call("speak", message.Content, tts.GetStatic<int>("QUEUE_FLUSH"), null);
-                            }
-                            else
-                            {
-                                Debug.LogError("TextToSpeech object is null.");
-                            }
-                        }
-                    }
-                });
-            });
+        var completionResponse = await openai.CreateChatCompletion(new CreateChatCompletionRequest()
+        {
+            Model = "gpt-3.5-turbo-0613",
+            Messages = messages
         });
+
+        if (completionResponse.Choices != null && completionResponse.Choices.Count > 0)
+        {
+            var message = completionResponse.Choices[0].Message;
+            message.Content = message.Content.Trim();
+
+            messages.Add(message);
+
+            TTSManager.Instance.Speak(message.Content);
+        }
     }
 
     private void Update()
@@ -115,4 +93,3 @@ public class Whisper : MonoBehaviour
         }
     }
 }
-

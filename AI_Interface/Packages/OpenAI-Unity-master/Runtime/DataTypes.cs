@@ -159,6 +159,7 @@ namespace OpenAI
         public ApiError Error { get; set; }
         public string Warning { get; set; }
         public string Text { get; set; }
+        public string Url { get; set; }
     }
     #endregion
     

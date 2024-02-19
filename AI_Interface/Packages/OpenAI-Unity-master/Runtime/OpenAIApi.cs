@@ -196,7 +196,30 @@ namespace OpenAI
             var json = JsonConvert.SerializeObject(request, jsonSerializerSettings);
             return Encoding.UTF8.GetBytes(json);
         }
+        
+        // Add this method to the OpenAIApi class
+        public async Task<CreateAudioResponse> CreateTextToSpeech(CreateTextToSpeechRequest request)
+        {
+            var path = $"{BASE_PATH}/audio/generate";
+            var payload = CreatePayload(request);
+            return await DispatchRequest<CreateAudioResponse>(path, UnityWebRequest.kHttpVerbPOST, payload);
+        }
 
+        public static string GetPath()
+        {
+            return $"{BASE_PATH}/audio/generate";
+        }
+        
+        // Create a new class for the TTS request
+        public class CreateTextToSpeechRequest
+        {
+            [JsonProperty("text")]
+            public string Text { get; set; }
+
+            [JsonProperty("voice")]
+            public string Voice { get; set; } = "texttospeech_voice_en-US_MichaelV3"; // Default voice, change as needed
+        }
+        
         /// <summary>
         ///     Lists the currently available models, and provides basic information about each one such as the owner and availability.
         /// </summary>
