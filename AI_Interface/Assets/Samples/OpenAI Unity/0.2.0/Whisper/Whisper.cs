@@ -1,5 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using OpenAI;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -17,8 +19,8 @@ public class Whisper : MonoBehaviour
     private AudioClip clip;
     private bool isRecording;
     private float time;
-    private OpenAIApi openai = new OpenAIApi("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","org-Xpw1zuIw1inG2e7vIB6ZKaEe");
-
+    private OpenAIApi openai = new OpenAIApi("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", "org-Xpw1zuIw1inG2e7vIB6ZKaEe");
+    string speechFilePath = Path.Combine(Environment.CurrentDirectory, "speech.mp3");
     private List<ChatMessage> messages = new List<ChatMessage>();
 
     private void Start()
@@ -35,7 +37,7 @@ public class Whisper : MonoBehaviour
 
     private async void EndRecording()
     {
-        message.text = "Transcripting...";
+        message.text = "Transcribing...";
 
         Microphone.End(null);
 
@@ -73,8 +75,34 @@ public class Whisper : MonoBehaviour
 
             messages.Add(message);
 
-            TTSManager.Instance.Speak(message.Content);
+            // Use OpenAI's TTS to speak the text
+            GetTTS(message.Content);
         }
+    }
+
+    private async void GetTTS(string text)
+    {
+        // Create request object
+        var request = new CreateTextToSpeechRequest
+        {
+            Text = text,
+            Model = "tts-1-hd",
+            Voice = "alloy",
+        };
+        
+        // Call the OpenAI API to generate speech
+        CreateAudioResponse response = await openai.CreateTextToSpeech(request);
+        
+        File.WriteAllBytes(speechFilePath, response.AudioData);
+
+        // Play the generated audio
+        AudioSource audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.clip = AudioClip.Create("GeneratedSpeech", response.AudioData.Length, 1, 44100, false);
+        audioSource.clip.SetData(Convert16BitByteArrayToFloat(response.AudioData), 0);
+        audioSource.Play();
+
+        // Destroy the AudioSource after playing
+        Destroy(audioSource, response.AudioData.Length / 44100);
     }
 
     private void Update()
@@ -91,5 +119,18 @@ public class Whisper : MonoBehaviour
                 EndRecording();
             }
         }
+    }
+    // Function to convert 16-bit byte array to float array
+    private float[] Convert16BitByteArrayToFloat(byte[] audioData)
+    {
+        int length = audioData.Length / 2;
+        float[] floatData = new float[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            floatData[i] = (float)((short)((audioData[i * 2 + 1] << 8) | audioData[i * 2])) / 32768.0f;
+        }
+
+        return floatData;
     }
 }
