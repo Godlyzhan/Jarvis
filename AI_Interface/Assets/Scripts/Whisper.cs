@@ -1,36 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
 using OpenAI;
 using UnityEngine;
 using UnityEngine.UI;
 
-[RequireComponent(typeof(AudioSource))]
 public class Whisper : MonoBehaviour
 {
-    [SerializeField] private Elevenlabs elevenlabs;
+    [SerializeField] private TTSManager ttsManager;
     [SerializeField] private Button recordButton;
     [SerializeField] private Image progressBar;
     [SerializeField] private Text message;
 
-    private AudioSource audioSource;
     private readonly string fileName = "output.wav";
     private readonly int duration = 5;
 
     private AudioClip clip;
     private bool isRecording;
     private float time;
-    private OpenAIApi openai = new OpenAIApi("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", "org-Xpw1zuIw1inG2e7vIB6ZKaEe");
+    private OpenAIApi openai = new OpenAIApi("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", "org-Xpw1zuIw1inG2e7vIB6ZKaEe");
     private List<ChatMessage> messages = new List<ChatMessage>();
-
-    private void OnEnable()
-    {
-        elevenlabs.AudioReceived.AddListener(PlayAudio);
-    }
 
     private void Start()
     {
-        audioSource = GetComponent<AudioSource>();
         recordButton.onClick.AddListener(StartRecording);
     }
 
@@ -78,27 +68,9 @@ public class Whisper : MonoBehaviour
         {
             var message = completionResponse.Choices[0].Message;
             message.Content = message.Content.Trim();
-            /*// Define the pattern for special characters
-            string pattern = "[^a-zA-Z0-9]";
-        
-            // Use Regex to replace special characters with an empty string
-            string result = Regex.Replace(message.Content, pattern, "");*/
-
             messages.Add(message);
-
-            HandleAudio(message.Content);
+            ttsManager.SynthesizeAndPlay(message.Content);
         }
-    }
-
-    private void HandleAudio(string generatedText)
-    {
-        elevenlabs.GetAudio(generatedText);
-    }
-
-    private void PlayAudio(AudioClip clip)
-    {
-        audioSource.clip = clip;
-        audioSource.Play();
     }
 
     private void Update()
