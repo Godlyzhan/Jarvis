@@ -16,7 +16,7 @@ public class Whisper : MonoBehaviour
     private AudioClip clip;
     private bool isRecording;
     private float time;
-    private OpenAIApi openai = new OpenAIApi("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", "org-Xpw1zuIw1inG2e7vIB6ZKaEe");
+    private OpenAIApi openai = new OpenAIApi("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", "org-Xpw1zuIw1inG2e7vIB6ZKaEe");
     private List<ChatMessage> messages = new List<ChatMessage>();
 
     private void Start()
