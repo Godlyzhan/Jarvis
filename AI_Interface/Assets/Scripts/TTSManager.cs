@@ -1,4 +1,7 @@
 using UnityEngine;
+using System;
+using System.IO;
+using System.Threading.Tasks; // Add this using directive
 
 public class TTSManager : MonoBehaviour
 {
@@ -14,10 +17,10 @@ public class TTSManager : MonoBehaviour
         if (!audioPlayer) this.audioPlayer = GetComponentInChildren<AudioPlayer>();
     }
 
-    public async void SynthesizeAndPlay(string text)
+    public async void SynthesizeAndPlay(string text, Action callback = null)
     {
         Debug.Log("Trying to synthesize " + text);
-        byte[] audioData = await openAIWrapper.RequestTextToSpeech(text, model, voice, speed);
+        byte[] audioData = await RequestTextToSpeech(text, model, voice, speed);
         if (audioData != null)
         {
             Debug.Log("Playing audio.");
@@ -27,13 +30,28 @@ public class TTSManager : MonoBehaviour
         {
             Debug.LogError("Failed to get audio data from OpenAI.");
         }
+        
+        // Invoke the callback function if provided
+        callback?.Invoke();
     }
 
-    public async void SynthesizeAndPlay(string text, TTSModel model, TTSVoice voice, float speed)
+
+    public async void DownloadAudio(string text, string filePath)
     {
-        this.model = model;
-        this.voice = voice;
-        this.speed = speed;
-        SynthesizeAndPlay(text);
+        byte[] audioData = await RequestTextToSpeech(text, model, voice, speed);
+        if (audioData != null)
+        {
+            File.WriteAllBytes(filePath, audioData);
+            Debug.Log("Audio file downloaded: " + filePath);
+        }
+        else
+        {
+            Debug.LogError("Failed to get audio data from OpenAI.");
+        }
+    }
+
+    private async Task<byte[]> RequestTextToSpeech(string text, TTSModel model, TTSVoice voice, float speed)
+    {
+        return await openAIWrapper.RequestTextToSpeech(text, model, voice, speed);
     }
 }
